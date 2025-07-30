@@ -1,0 +1,706 @@
+/* Помоги сестренке - Игра три в ряд */
+/* Complete CSS styling */
+
+/* Основные стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: url('./assets/background_main.png') center/cover no-repeat,
+                linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    grid-template-areas: 
+        "header header"
+        "character board"
+        "progress progress"
+        "controls controls";
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+}
+
+/* Заголовок */
+.game-header {
+    grid-area: header;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.game-title {
+    font-size: 2.5em;
+    color: #ff6b9d;
+    text-align: center;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+}
+
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #ff6b9d;
+}
+
+/* Область персонажа */
+.character-area {
+    grid-area: character;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.character-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.character-img {
+    width: 200px;
+    height: 250px;
+    object-fit: contain;
+    border-radius: 15px;
+    transition: transform 0.3s ease;
+    animation: float 3s ease-in-out infinite;
+    background: url('./assets/character_main.png') center/contain no-repeat;
+}
+
+.character-img:hover {
+    transform: scale(1.05);
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.speech-bubble {
+    background: #fff;
+    border-radius: 20px;
+    padding: 15px;
+    margin-top: 15px;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    max-width: 250px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.speech-bubble::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #fff;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.speech-bubble p {
+    color: #333;
+    font-size: 0.9em;
+    line-height: 1.4;
+    text-align: center;
+}
+
+#target-score {
+    color: #ff6b9d;
+    font-weight: bold;
+}
+
+/* Игровое поле */
+.game-board-container {
+    grid-area: board;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-template-rows: repeat(8, 60px);
+    gap: 2px;
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.game-cell {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border: 2px solid transparent;
+}
+
+.game-cell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.game-cell:hover::before {
+    opacity: 1;
+}
+
+.game-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.game-cell.selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px #ff6b9d;
+    border: 3px solid #ff6b9d;
+}
+
+.game-cell.matching {
+    animation: match-pulse 0.5s ease-in-out;
+}
+
+@keyframes match-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.crystal-icon {
+    width: 90%;
+    height: 90%;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    transition: all 0.3s ease;
+}
+
+/* Панель прогресса */
+.progress-panel {
+    grid-area: progress;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.progress-bar-container label {
+    font-weight: bold;
+    color: #333;
+    min-width: 120px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 20px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b9d, #ff8a80);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+#progress-text {
+    font-weight: bold;
+    color: #ff6b9d;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* Панель управления */
+.control-panel {
+    grid-area: controls;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff6b9d, #ff8a80);
+    color: white;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #a8edea, #fed6e3);
+    color: #333;
+}
+
+.btn-hint {
+    background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+    color: #333;
+}
+
+.btn-shuffle {
+    background: linear-gradient(135deg, #95e1d3, #fce38a);
+    color: #333;
+}
+
+.btn-pause {
+    background: linear-gradient(135deg, #d1c4e9, #ffcdd2);
+    color: #333;
+}
+
+/* Модальные окна */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-content h2 {
+    color: #ff6b9d;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.modal-content p {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+    line-height: 1.5;
+}
+
+.character-celebration {
+    margin: 20px 0;
+}
+
+.celebration-img {
+    width: 150px;
+    height: 180px;
+    object-fit: contain;
+    border-radius: 15px;
+    animation: celebration-bounce 1s ease-in-out infinite;
+    background: url('./assets/character_victory.png') center/contain no-repeat;
+}
+
+@keyframes celebration-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.05); }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .game-container {
+        grid-template-areas: 
+            "header"
+            "character"
+            "board"
+            "progress"
+            "controls";
+        grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 15px;
+    }
+    
+    .game-board {
+        grid-template-columns: repeat(8, 45px);
+        grid-template-rows: repeat(8, 45px);
+        gap: 1px;
+        padding: 8px;
+    }
+    
+    .game-cell {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .character-img {
+        width: 150px;
+        height: 180px;
+    }
+    
+    .game-title {
+        font-size: 2em;
+    }
+    
+    .control-panel {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 0.9em;
+        flex: 1;
+        min-width: 140px;
+    }
+    
+    .speech-bubble {
+        max-width: 200px;
+        font-size: 0.8em;
+    }
+    
+    .modal-content {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+    
+    .celebration-img {
+        width: 120px;
+        height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-board {
+        grid-template-columns: repeat(8, 35px);
+        grid-template-rows: repeat(8, 35px);
+    }
+    
+    .game-cell {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .game-title {
+        font-size: 1.5em;
+    }
+    
+    .btn {
+        font-size: 0.8em;
+        padding: 8px 16px;
+        min-width: 120px;
+    }
+    
+    .character-img {
+        width: 120px;
+        height: 150px;
+    }
+}
+
+/* Эффекты частиц */
+.particle {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particle-float 1s ease-out forwards;
+}
+
+@keyframes particle-float {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-100px) scale(0);
+    }
+}
+
+/* Дополнительные анимации */
+@keyframes crystal-spawn {
+    0% {
+        opacity: 0;
+        transform: translateY(-60px) scale(0.5);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-30px) scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.game-cell.spawning {
+    animation: crystal-spawn 0.6s ease-out;
+}
+
+@keyframes crystal-disappear {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.3);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+
+.game-cell.disappearing {
+    animation: crystal-disappear 0.4s ease-in;
+}
+
+@keyframes crystal-fall {
+    0% {
+        transform: translateY(-100px);
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.game-cell.falling {
+    animation: crystal-fall 0.5s ease-out;
+}
+
+@keyframes special-glow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 107, 157, 0.8), 0 0 35px rgba(255, 107, 157, 0.6);
+    }
+}
+
+.game-cell.special {
+    animation: special-glow 2s ease-in-out infinite;
+}
+
+@keyframes combo-effect {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.2);
+        filter: brightness(1.5) saturate(1.5);
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+.game-cell.combo {
+    animation: combo-effect 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.game-board.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes character-happy {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    25% {
+        transform: translateY(-5px) scale(1.02);
+    }
+    50% {
+        transform: translateY(-10px) scale(1.05);
+    }
+    75% {
+        transform: translateY(-5px) scale(1.02);
+    }
+}
+
+.character-img.happy {
+    animation: character-happy 1s ease-in-out;
+}
+
+@keyframes speech-appear {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.speech-bubble.appear {
+    animation: speech-appear 0.5s ease-out;
+}
+
+/* Дополнительные стили для улучшенного UX */
+.game-cell:active {
+    transform: scale(0.95);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Стили для загрузки */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Стили для отключенных элементов */
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Стили для анимации счета */
+@keyframes score-animation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.score-animate {
+    animation: score-animation 0.3s ease-in-out;
+}
+
+/* Стили для подсветки возможных ходов */
+.game-cell.possible-move {
+    box-shadow: 0 0 15px rgba(255, 234, 167, 0.8);
+    animation: possible-move-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes possible-move-glow {
+    0% { box-shadow: 0 0 15px rgba(255, 234, 167, 0.8); }
+    100% { box-shadow: 0 0 25px rgba(255, 234, 167, 1); }
+}
+

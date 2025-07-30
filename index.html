@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Помоги сестренке - Игра три в ряд</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Заголовок -->
+        <div class="game-header">
+            <h1 class="game-title">Помоги сестренке</h1>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Очки</span>
+                    <span class="stat-value" id="score-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Уровень</span>
+                    <span class="stat-value" id="level-value">1</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Ходы</span>
+                    <span class="stat-value" id="moves-value">30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Область персонажа -->
+        <div class="character-area">
+            <div class="character-container">
+                <div class="character-img"></div>
+                <div class="speech-bubble">
+                    <p>Привет! Помоги мне собрать кристаллы! Нужно набрать <span id="target-score">1000</span> очков!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Игровое поле -->
+        <div class="game-board-container">
+            <div class="game-board"></div>
+        </div>
+
+        <!-- Панель прогресса -->
+        <div class="progress-panel">
+            <div class="progress-bar-container">
+                <label>Прогресс:</label>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <span id="progress-text">0/1000</span>
+            </div>
+        </div>
+
+        <!-- Панель управления -->
+        <div class="control-panel">
+            <button class="btn btn-primary" id="new-game-btn">Новая игра</button>
+            <button class="btn btn-hint" id="hint-btn">Подсказка (3)</button>
+            <button class="btn btn-shuffle" id="shuffle-btn">Перемешать (2)</button>
+            <button class="btn btn-pause" id="pause-btn">Пауза</button>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <!-- Модальное окно победы -->
+    <div class="modal hidden" id="victory-modal">
+        <div class="modal-content">
+            <h2>Поздравляем!</h2>
+            <div class="character-celebration">
+                <div class="celebration-img"></div>
+            </div>
+            <p>Вы прошли уровень! Отличная работа!</p>
+            <button class="btn btn-primary">Следующий уровень</button>
+            <button class="btn btn-secondary">Новая игра</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно поражения -->
+    <div class="modal hidden" id="game-over-modal">
+        <div class="modal-content">
+            <h2>Игра окончена</h2>
+            <p>Не расстраивайтесь! Попробуйте еще раз!</p>
+            <button class="btn btn-primary">Попробовать снова</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно паузы -->
+    <div class="modal hidden" id="pause-modal">
+        <div class="modal-content">
+            <h2>Пауза</h2>
+            <p>Игра приостановлена</p>
+            <button class="btn btn-primary">Продолжить</button>
+            <button class="btn btn-secondary">Новая игра</button>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
+
