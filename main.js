@@ -1,32 +1,357 @@
 // Помоги сестренке - Игра три в ряд
 // Main game logic
 
+class AudioManager {
+    constructor() {
+        this.bgMusic = document.getElementById('bg-music');
+        this.matchSound = document.getElementById('match-sound');
+        this.comboSound = document.getElementById('combo-sound');
+        this.audioEnabled = localStorage.getItem('audioEnabled') !== 'false';
+        this.setupAudioControls();
+    }
+
+    setupAudioControls() {
+        const audioToggle = document.getElementById('audio-toggle');
+        audioToggle.addEventListener('click', () => this.toggleAudio());
+        this.updateAudioButton();
+        
+        if (this.audioEnabled) {
+            // Try to play background music (will be blocked until user interaction)
+            this.bgMusic.volume = 0.3;
+        }
+    }
+
+    toggleAudio() {
+        this.audioEnabled = !this.audioEnabled;
+        localStorage.setItem('audioEnabled', this.audioEnabled);
+        
+        if (this.audioEnabled) {
+            this.bgMusic.play().catch(() => {
+                // Autoplay blocked, will play on first user interaction
+            });
+        } else {
+            this.bgMusic.pause();
+        }
+        
+        this.updateAudioButton();
+    }
+
+    updateAudioButton() {
+        const audioToggle = document.getElementById('audio-toggle');
+        audioToggle.textContent = this.audioEnabled ? '🔊' : '🔇';
+        audioToggle.classList.toggle('muted', !this.audioEnabled);
+    }
+
+    playMatchSound() {
+        if (this.audioEnabled) {
+            this.matchSound.currentTime = 0;
+            this.matchSound.play().catch(() => {});
+        }
+    }
+
+    playComboSound() {
+        if (this.audioEnabled) {
+            this.comboSound.currentTime = 0;
+            this.comboSound.play().catch(() => {});
+        }
+    }
+
+    startBackgroundMusic() {
+        if (this.audioEnabled) {
+            this.bgMusic.play().catch(() => {});
+        }
+    }
+}
+
+class PreLoader {
+    constructor() {
+        this.assetsToLoad = [
+            'assets/gem_red.png',
+            'assets/gem_blue.png',
+            'assets/gem_green.png',
+            'assets/gem_purple.png',
+            'assets/gem_yellow.png',
+            'assets/gem_pink.png',
+            'assets/gem_orange.png',
+            'assets/gem_cyan.png',
+            'assets/character_main.png',
+            'assets/character_full_1.png',
+            'assets/character_full_2.png',
+            'assets/character_full_3.png',
+            'assets/background_main.png',
+            'assets/preloader_character.png',
+            'assets/bg_music.wav',
+            'assets/match_sound.wav',
+            'assets/combo_sound.wav'
+        ];
+        this.loadedAssets = 0;
+        this.totalAssets = this.assetsToLoad.length;
+    }
+
+    async loadAssets() {
+        document.body.classList.add('loading');
+        
+        const promises = this.assetsToLoad.map(asset => this.loadAsset(asset));
+        
+        try {
+            await Promise.all(promises);
+            this.onLoadComplete();
+        } catch (error) {
+            console.warn('Some assets failed to load:', error);
+            this.onLoadComplete();
+        }
+    }
+
+    loadAsset(src) {
+        return new Promise((resolve) => {
+            if (src.endsWith('.wav')) {
+                // Load audio
+                const audio = new Audio(src);
+                audio.addEventListener('canplaythrough', () => {
+                    this.updateProgress();
+                    resolve();
+                });
+                audio.addEventListener('error', () => {
+                    this.updateProgress();
+                    resolve(); // Don't fail on audio errors
+                });
+            } else {
+                // Load image
+                const img = new Image();
+                img.onload = () => {
+                    this.updateProgress();
+                    resolve();
+                };
+                img.onerror = () => {
+                    this.updateProgress();
+                    resolve(); // Don't fail on image errors
+                };
+                img.src = src;
+            }
+        });
+    }
+
+    updateProgress() {
+        this.loadedAssets++;
+        const percentage = Math.round((this.loadedAssets / this.totalAssets) * 100);
+        
+        const progressFill = document.querySelector('.progress-fill-preloader');
+        const percentageText = document.querySelector('.preloader-percentage');
+        
+        if (progressFill) progressFill.style.width = percentage + '%';
+        if (percentageText) percentageText.textContent = percentage + '%';
+    }
+
+    onLoadComplete() {
+        setTimeout(() => {
+            const preloader = document.getElementById('preloader');
+            preloader.classList.add('hidden');
+            document.body.classList.remove('loading');
+            
+            // Initialize game after preloader
+            setTimeout(() => {
+                window.game = new Match3Game();
+            }, 500);
+        }, 1000);
+    }
+}
+
 class Match3Game {
     constructor() {
         this.boardSize = 8;
         this.gemTypes = ['red', 'blue', 'green', 'purple', 'yellow', 'pink', 'orange', 'cyan'];
         this.board = [];
-        this.selectedCell = null;
         this.score = 0;
         this.level = 1;
-        this.targetScore = 1000;
         this.moves = 30;
-        this.maxMoves = 30;
-        this.gameState = 'playing'; // playing, won, lost, paused
+        this.targetScore = 1000;
+        this.selectedCell = null;
         this.animating = false;
-        this.combo = 0;
+        this.gameState = 'playing'; // 'playing', 'paused', 'victory', 'gameover'
         this.hints = 3;
         this.shuffles = 2;
+        this.comboCount = 0;
+        this.idleTime = 0;
+        this.hintShown = false;
+        this.tutorialShown = localStorage.getItem('tutorialShown') === 'true';
+        this.idleTimer = null;
         
-        this.init();
+        this.audioManager = new AudioManager();
+        this.initGame();
     }
 
-    init() {
+    initGame() {
+        this.board = [];
+        this.score = 0;
+        this.level = 1;
+        this.moves = this.getMovesForLevel(this.level);
+        this.targetScore = this.getTargetScoreForLevel(this.level);
+        this.selectedCell = null;
+        this.animating = false;
+        this.gameState = 'playing';
+        this.hints = 3;
+        this.shuffles = 2;
+        this.comboCount = 0;
+        this.idleTime = 0;
+        this.hintShown = false;
+        
         this.createBoard();
         this.renderBoard();
         this.updateUI();
         this.bindEvents();
+        
+        // Start idle timer for hints
+        this.startIdleTimer();
+        
+        // Start background music
+        this.audioManager.startBackgroundMusic();
+        
+        // Show tutorial if first time
+        if (!this.tutorialShown) {
+            setTimeout(() => this.showTutorial(), 1000);
+        }
+        
         this.showWelcomeMessage();
+    }
+
+    getMovesForLevel(level) {
+        // Gradually decrease moves as level increases
+        const baseMoves = 30;
+        const reduction = Math.floor((level - 1) / 3); // Reduce by 1 every 3 levels
+        return Math.max(15, baseMoves - reduction); // Minimum 15 moves
+    }
+
+    getTargetScoreForLevel(level) {
+        // Gradually increase target score
+        return 1000 + (level - 1) * 500;
+    }
+
+    startIdleTimer() {
+        if (this.idleTimer) clearInterval(this.idleTimer);
+        this.idleTime = 0;
+        this.hintShown = false;
+        
+        this.idleTimer = setInterval(() => {
+            if (this.gameState === 'playing' && !this.animating) {
+                this.idleTime++;
+                if (this.idleTime >= 5 && !this.hintShown && this.hints > 0) {
+                    this.showAutoHint();
+                    this.hintShown = true;
+                }
+            }
+        }, 1000);
+    }
+
+    resetIdleTimer() {
+        this.idleTime = 0;
+        this.hintShown = false;
+    }
+
+    showTutorial() {
+        const modal = document.createElement('div');
+        modal.className = 'modal tutorial-modal';
+        modal.innerHTML = `
+            <div class="modal-content tutorial-content">
+                <div class="tutorial-character">
+                    <img src="assets/character_full_1.png" alt="Аниме девочка">
+                </div>
+                <div class="tutorial-text">
+                    <h2>Привет, онэ-тян! 💖</h2>
+                    <p>Я покажу тебе, как играть!</p>
+                    <div class="tutorial-step" id="tutorial-step-1">
+                        <p>Кликни на кристалл, чтобы выбрать его</p>
+                        <div class="tutorial-hand">👆</div>
+                    </div>
+                    <div class="tutorial-step hidden" id="tutorial-step-2">
+                        <p>Теперь кликни на соседний кристалл, чтобы поменять их местами</p>
+                        <div class="tutorial-hand">👆</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary tutorial-next" onclick="game.nextTutorialStep()">Понятно!</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        this.tutorialStep = 1;
+        this.gameState = 'tutorial';
+    }
+
+    nextTutorialStep() {
+        if (this.tutorialStep === 1) {
+            document.getElementById('tutorial-step-1').classList.add('hidden');
+            document.getElementById('tutorial-step-2').classList.remove('hidden');
+            this.tutorialStep = 2;
+        } else {
+            this.closeTutorial();
+        }
+    }
+
+    closeTutorial() {
+        const modal = document.querySelector('.tutorial-modal');
+        if (modal) modal.remove();
+        
+        localStorage.setItem('tutorialShown', 'true');
+        this.tutorialShown = true;
+        this.gameState = 'playing';
+    }
+
+    showAutoHint() {
+        const possibleMoves = this.findPossibleMoves();
+        if (possibleMoves.length > 0) {
+            const move = possibleMoves[0];
+            this.highlightHintMove(move);
+        }
+    }
+
+    highlightHintMove(move) {
+        const cell1 = document.querySelector(`[data-row="${move.from.row}"][data-col="${move.from.col}"]`);
+        const cell2 = document.querySelector(`[data-row="${move.to.row}"][data-col="${move.to.col}"]`);
+        
+        if (cell1 && cell2) {
+            // Add animated hand pointer
+            this.showAnimatedHand(cell1, cell2);
+            
+            // Highlight cells
+            cell1.classList.add('hint-highlight');
+            cell2.classList.add('hint-highlight');
+            
+            setTimeout(() => {
+                cell1.classList.remove('hint-highlight');
+                cell2.classList.remove('hint-highlight');
+                this.removeAnimatedHand();
+            }, 3000);
+        }
+    }
+
+    showAnimatedHand(cell1, cell2) {
+        const hand = document.createElement('div');
+        hand.className = 'animated-hand';
+        hand.innerHTML = '👆';
+        
+        const rect1 = cell1.getBoundingClientRect();
+        const rect2 = cell2.getBoundingClientRect();
+        
+        hand.style.position = 'fixed';
+        hand.style.left = rect1.left + rect1.width / 2 + 'px';
+        hand.style.top = rect1.top + rect1.height / 2 + 'px';
+        hand.style.fontSize = '24px';
+        hand.style.zIndex = '1000';
+        hand.style.pointerEvents = 'none';
+        hand.style.animation = 'handPulse 1s infinite';
+        
+        document.body.appendChild(hand);
+        
+        // Animate to second cell
+        setTimeout(() => {
+            hand.style.transition = 'all 1s ease-in-out';
+            hand.style.left = rect2.left + rect2.width / 2 + 'px';
+            hand.style.top = rect2.top + rect2.height / 2 + 'px';
+        }, 1000);
+    }
+
+    removeAnimatedHand() {
+        const hand = document.querySelector('.animated-hand');
+        if (hand) hand.remove();
     }
 
     createBoard() {
@@ -88,21 +413,15 @@ class Match3Game {
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const cell = document.createElement('div');
-                cell.className = `game-cell crystal-${this.board[row][col]}`;
+                cell.className = 'game-cell';
                 cell.dataset.row = row;
                 cell.dataset.col = col;
                 
-                // Добавляем иконку кристалла
-                const icon = document.createElement('div');
-                icon.className = 'crystal-icon';
-                icon.style.backgroundImage = `url('./assets/gem_${this.board[row][col]}.png')`;
-                icon.style.backgroundSize = 'contain';
-                icon.style.backgroundRepeat = 'no-repeat';
-                icon.style.backgroundPosition = 'center';
-                icon.style.width = '100%';
-                icon.style.height = '100%';
-                cell.appendChild(icon);
+                const gem = document.createElement('div');
+                gem.className = `gem gem-${this.board[row][col]}`;
+                gem.style.backgroundImage = `url('assets/gem_${this.board[row][col]}.png')`;
                 
+                cell.appendChild(gem);
                 boardElement.appendChild(cell);
             }
         }
@@ -213,6 +532,8 @@ class Match3Game {
         const row = parseInt(cell.dataset.row);
         const col = parseInt(cell.dataset.col);
         
+        this.resetIdleTimer();
+        
         if (this.selectedCell) {
             if (this.selectedCell.row === row && this.selectedCell.col === col) {
                 // Отменяем выбор
@@ -235,16 +556,21 @@ class Match3Game {
     selectCell(row, col) {
         this.clearSelection();
         this.selectedCell = {row, col};
+        
         const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        cell.classList.add('selected');
+        if (cell) {
+            cell.classList.add('selected');
+        }
     }
 
     clearSelection() {
         if (this.selectedCell) {
             const cell = document.querySelector(`[data-row="${this.selectedCell.row}"][data-col="${this.selectedCell.col}"]`);
-            if (cell) cell.classList.remove('selected');
-            this.selectedCell = null;
+            if (cell) {
+                cell.classList.remove('selected');
+            }
         }
+        this.selectedCell = null;
     }
 
     isAdjacent(cell1, cell2) {
@@ -253,44 +579,38 @@ class Match3Game {
         return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
     }
 
-    async swapGems(cell1, cell2) {
+    swapGems(cell1, cell2) {
         this.animating = true;
         
-        // Меняем местами
+        // Временно меняем местами
         const temp = this.board[cell1.row][cell1.col];
         this.board[cell1.row][cell1.col] = this.board[cell2.row][cell2.col];
         this.board[cell2.row][cell2.col] = temp;
         
-        this.renderBoard();
-        await this.sleep(300);
-        
-        // Проверяем совпадения
+        // Проверяем, есть ли совпадения
         const matches = this.findMatches();
         
         if (matches.length > 0) {
-            // Успешный ход
-            this.moves--;
+            // Валидный ход
             this.clearSelection();
-            await this.processMatches();
-            this.checkGameEnd();
-        } else {
-            // Неуспешный ход - возвращаем обратно
-            const temp = this.board[cell1.row][cell1.col];
-            this.board[cell1.row][cell1.col] = this.board[cell2.row][cell2.col];
-            this.board[cell2.row][cell2.col] = temp;
-            
+            this.moves--;
             this.renderBoard();
-            this.shakeBoard();
+            
+            setTimeout(() => {
+                this.processMatches();
+            }, 300);
+        } else {
+            // Недопустимый ход - возвращаем обратно
+            this.board[cell2.row][cell2.col] = this.board[cell1.row][cell1.col];
+            this.board[cell1.row][cell1.col] = temp;
+            
+            this.animating = false;
             this.clearSelection();
         }
-        
-        this.animating = false;
-        this.updateUI();
     }
 
     findMatches() {
         const matches = [];
-        const visited = new Set();
         
         // Горизонтальные совпадения
         for (let row = 0; row < this.boardSize; row++) {
@@ -303,25 +623,17 @@ class Match3Game {
                 } else {
                     if (count >= 3) {
                         for (let i = col - count; i < col; i++) {
-                            const key = `${row}-${i}`;
-                            if (!visited.has(key)) {
-                                matches.push({row, col: i});
-                                visited.add(key);
-                            }
+                            matches.push({row, col: i});
                         }
                     }
-                    count = 1;
                     currentGem = this.board[row][col];
+                    count = 1;
                 }
             }
             
             if (count >= 3) {
                 for (let i = this.boardSize - count; i < this.boardSize; i++) {
-                    const key = `${row}-${i}`;
-                    if (!visited.has(key)) {
-                        matches.push({row, col: i});
-                        visited.add(key);
-                    }
+                    matches.push({row, col: i});
                 }
             }
         }
@@ -337,25 +649,17 @@ class Match3Game {
                 } else {
                     if (count >= 3) {
                         for (let i = row - count; i < row; i++) {
-                            const key = `${i}-${col}`;
-                            if (!visited.has(key)) {
-                                matches.push({row: i, col});
-                                visited.add(key);
-                            }
+                            matches.push({row: i, col});
                         }
                     }
-                    count = 1;
                     currentGem = this.board[row][col];
+                    count = 1;
                 }
             }
             
             if (count >= 3) {
                 for (let i = this.boardSize - count; i < this.boardSize; i++) {
-                    const key = `${i}-${col}`;
-                    if (!visited.has(key)) {
-                        matches.push({row: i, col});
-                        visited.add(key);
-                    }
+                    matches.push({row: i, col});
                 }
             }
         }
@@ -363,84 +667,94 @@ class Match3Game {
         return matches;
     }
 
-    async processMatches() {
-        let totalMatches = 0;
-        this.combo = 0;
+    processMatches() {
+        const matches = this.findMatches();
         
-        while (true) {
-            const matches = this.findMatches();
-            if (matches.length === 0) break;
+        if (matches.length === 0) {
+            this.animating = false;
+            this.checkGameEnd();
+            return;
+        }
+        
+        // Play match sound
+        this.audioManager.playMatchSound();
+        
+        // Подсчет очков и комбо
+        const baseScore = matches.length * 10;
+        let comboMultiplier = 1;
+        
+        if (matches.length >= 4) {
+            this.comboCount++;
+            comboMultiplier = 1 + (this.comboCount * 0.5);
+            this.showComboEffect(matches.length);
+            this.audioManager.playComboSound();
+        } else {
+            this.comboCount = 0;
+        }
+        
+        const scoreGained = Math.floor(baseScore * comboMultiplier);
+        this.score += scoreGained;
+        
+        // Анимация исчезновения
+        matches.forEach(match => {
+            const cell = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
+            if (cell) {
+                cell.classList.add('matched');
+            }
+        });
+        
+        setTimeout(() => {
+            // Удаляем совпавшие кристаллы
+            matches.forEach(match => {
+                this.board[match.row][match.col] = null;
+            });
             
-            this.combo++;
-            totalMatches += matches.length;
-            
-            // Анимация исчезновения
-            await this.animateMatches(matches);
-            
-            // Убираем совпавшие кристаллы
-            this.removeMatches(matches);
-            
-            // Падение кристаллов
-            await this.dropGems();
+            // Опускаем кристаллы
+            this.dropGems();
             
             // Заполняем пустые места
             this.fillEmptySpaces();
             
             this.renderBoard();
-            await this.sleep(300);
-        }
-        
-        // Начисляем очки
-        if (totalMatches > 0) {
-            const baseScore = totalMatches * 10;
-            const comboBonus = this.combo > 1 ? (this.combo - 1) * 50 : 0;
-            const scoreGained = baseScore + comboBonus;
+            this.updateUI();
             
-            this.score += scoreGained;
-            this.showScorePopup(scoreGained);
-            this.animateCharacter('happy');
+            // Проверяем новые совпадения
+            setTimeout(() => {
+                this.processMatches();
+            }, 300);
             
-            if (this.combo > 1) {
-                this.showComboPopup(this.combo);
-            }
-        }
+        }, 500);
     }
 
-    async animateMatches(matches) {
-        matches.forEach(match => {
-            const cell = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
-            if (cell) {
-                cell.classList.add('matching');
-                this.createParticles(cell);
-            }
-        });
+    showComboEffect(matchCount) {
+        const comboText = document.createElement('div');
+        comboText.className = 'combo-effect';
+        comboText.innerHTML = `
+            <div class="combo-text">COMBO!</div>
+            <div class="combo-multiplier">x${this.comboCount + 1}</div>
+        `;
         
-        await this.sleep(500);
+        document.body.appendChild(comboText);
+        
+        setTimeout(() => {
+            comboText.remove();
+        }, 2000);
     }
 
-    removeMatches(matches) {
-        matches.forEach(match => {
-            this.board[match.row][match.col] = null;
-        });
-    }
-
-    async dropGems() {
+    dropGems() {
         for (let col = 0; col < this.boardSize; col++) {
-            let writePos = this.boardSize - 1;
+            let writeIndex = this.boardSize - 1;
             
             for (let row = this.boardSize - 1; row >= 0; row--) {
                 if (this.board[row][col] !== null) {
-                    if (row !== writePos) {
-                        this.board[writePos][col] = this.board[row][col];
+                    this.board[writeIndex][col] = this.board[row][col];
+                    if (writeIndex !== row) {
                         this.board[row][col] = null;
                     }
-                    writePos--;
+                    writeIndex--;
                 }
             }
         }
-        
-        this.renderBoard();
-        await this.sleep(300);
     }
 
     fillEmptySpaces() {
@@ -453,91 +767,159 @@ class Match3Game {
         }
     }
 
-    hasPossibleMoves() {
-        for (let row = 0; row < this.boardSize; row++) {
-            for (let col = 0; col < this.boardSize; col++) {
-                // Проверяем возможность хода вправо
-                if (col < this.boardSize - 1) {
-                    if (this.wouldCreateMatch(row, col, row, col + 1)) {
-                        return true;
-                    }
-                }
-                
-                // Проверяем возможность хода вниз
-                if (row < this.boardSize - 1) {
-                    if (this.wouldCreateMatch(row, col, row + 1, col)) {
-                        return true;
-                    }
-                }
-            }
+    checkGameEnd() {
+        if (this.score >= this.targetScore) {
+            this.levelUp();
+        } else if (this.moves <= 0) {
+            this.gameOver();
         }
-        return false;
     }
 
-    wouldCreateMatch(row1, col1, row2, col2) {
-        // Временно меняем местами
-        const temp = this.board[row1][col1];
-        this.board[row1][col1] = this.board[row2][col2];
-        this.board[row2][col2] = temp;
+    levelUp() {
+        this.gameState = 'victory';
+        this.level++;
         
-        const hasMatch = this.findMatches().length > 0;
+        // Show victory modal with new character
+        this.showVictoryModal();
+    }
+
+    showVictoryModal() {
+        const characterImages = [
+            'character_full_1.png',
+            'character_full_2.png', 
+            'character_full_3.png'
+        ];
         
-        // Возвращаем обратно
-        this.board[row2][col2] = this.board[row1][col1];
-        this.board[row1][col1] = temp;
+        const randomCharacter = characterImages[Math.floor(Math.random() * characterImages.length)];
         
-        return hasMatch;
+        const modal = document.getElementById('victory-modal');
+        const characterImg = modal.querySelector('.celebration-img');
+        if (characterImg) {
+            characterImg.style.backgroundImage = `url('assets/${randomCharacter}')`;
+        }
+        
+        modal.classList.remove('hidden');
+        
+        // Bind victory modal buttons
+        const nextLevelBtn = modal.querySelector('.btn-primary');
+        const newGameBtn = modal.querySelector('.btn-secondary');
+        
+        nextLevelBtn.onclick = () => this.nextLevel();
+        newGameBtn.onclick = () => this.newGame();
+    }
+
+    nextLevel() {
+        document.getElementById('victory-modal').classList.add('hidden');
+        
+        // Reset for next level
+        this.moves = this.getMovesForLevel(this.level);
+        this.targetScore = this.getTargetScoreForLevel(this.level);
+        this.hints = 3;
+        this.shuffles = 2;
+        this.gameState = 'playing';
+        
+        this.createBoard();
+        this.renderBoard();
+        this.updateUI();
+        this.showLevelMessage();
+    }
+
+    showLevelMessage() {
+        const messages = [
+            "Отлично, онэ-тян! Следующий уровень!",
+            "Ты супер! Продолжаем!",
+            "Ещё чуть-чуть! Я верю в тебя!",
+            "Потрясающе! Ты лучшая!",
+            "Невероятно! Идём дальше!"
+        ];
+        
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        this.updateSpeechBubble(randomMessage);
+    }
+
+    gameOver() {
+        this.gameState = 'gameover';
+        document.getElementById('game-over-modal').classList.remove('hidden');
+        
+        const retryBtn = document.querySelector('#game-over-modal .btn-primary');
+        retryBtn.onclick = () => this.newGame();
+    }
+
+    newGame() {
+        // Hide all modals
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.classList.add('hidden');
+        });
+        
+        // Reset game state
+        this.level = 1;
+        this.initGame();
     }
 
     showHint() {
-        if (this.hints <= 0 || this.animating) return;
+        if (this.hints <= 0 || this.animating || this.gameState !== 'playing') return;
         
-        this.hints--;
-        
-        for (let row = 0; row < this.boardSize; row++) {
-            for (let col = 0; col < this.boardSize; col++) {
-                // Проверяем возможность хода вправо
-                if (col < this.boardSize - 1) {
-                    if (this.wouldCreateMatch(row, col, row, col + 1)) {
-                        this.highlightHint(row, col, row, col + 1);
-                        this.updateUI();
-                        return;
-                    }
-                }
-                
-                // Проверяем возможность хода вниз
-                if (row < this.boardSize - 1) {
-                    if (this.wouldCreateMatch(row, col, row + 1, col)) {
-                        this.highlightHint(row, col, row + 1, col);
-                        this.updateUI();
-                        return;
-                    }
-                }
-            }
+        const possibleMoves = this.findPossibleMoves();
+        if (possibleMoves.length > 0) {
+            this.hints--;
+            const move = possibleMoves[0];
+            this.highlightHintMove(move);
+            this.updateUI();
         }
     }
 
-    highlightHint(row1, col1, row2, col2) {
-        const cell1 = document.querySelector(`[data-row="${row1}"][data-col="${col1}"]`);
-        const cell2 = document.querySelector(`[data-row="${row2}"][data-col="${col2}"]`);
+    findPossibleMoves() {
+        const moves = [];
         
-        [cell1, cell2].forEach(cell => {
-            if (cell) {
-                cell.classList.add('hint');
-                setTimeout(() => {
-                    cell.classList.remove('hint');
-                }, 2000);
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
+                // Проверяем возможные обмены с соседними ячейками
+                const directions = [
+                    {dr: 0, dc: 1}, // право
+                    {dr: 1, dc: 0}, // вниз
+                ];
+                
+                directions.forEach(dir => {
+                    const newRow = row + dir.dr;
+                    const newCol = col + dir.dc;
+                    
+                    if (newRow < this.boardSize && newCol < this.boardSize) {
+                        // Временно меняем местами
+                        const temp = this.board[row][col];
+                        this.board[row][col] = this.board[newRow][newCol];
+                        this.board[newRow][newCol] = temp;
+                        
+                        // Проверяем, есть ли совпадения
+                        const matches = this.findMatches();
+                        if (matches.length > 0) {
+                            moves.push({
+                                from: {row, col},
+                                to: {row: newRow, col: newCol}
+                            });
+                        }
+                        
+                        // Возвращаем обратно
+                        this.board[newRow][newCol] = this.board[row][col];
+                        this.board[row][col] = temp;
+                    }
+                });
             }
-        });
+        }
+        
+        return moves;
+    }
+
+    hasPossibleMoves() {
+        return this.findPossibleMoves().length > 0;
     }
 
     shuffleBoard() {
-        if (this.shuffles <= 0 || this.animating) return;
+        if (this.shuffles <= 0 || this.animating || this.gameState !== 'playing') return;
         
         this.shuffles--;
         this.animating = true;
         
-        // Собираем все кристаллы
+        // Перемешиваем доску
         const gems = [];
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
@@ -545,13 +927,13 @@ class Match3Game {
             }
         }
         
-        // Перемешиваем
+        // Перемешиваем массив
         for (let i = gems.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [gems[i], gems[j]] = [gems[j], gems[i]];
         }
         
-        // Размещаем обратно
+        // Заполняем доску перемешанными кристаллами
         let index = 0;
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
@@ -559,69 +941,34 @@ class Match3Game {
             }
         }
         
+        // Убираем возможные начальные совпадения
         this.removeInitialMatches();
+        
+        // Убеждаемся, что есть возможные ходы
+        if (!this.hasPossibleMoves()) {
+            this.shuffleBoard(); // Рекурсивно перемешиваем снова
+            return;
+        }
+        
         this.renderBoard();
         this.updateUI();
-        
-        setTimeout(() => {
-            this.animating = false;
-        }, 500);
+        this.animating = false;
     }
 
     togglePause() {
         if (this.gameState === 'playing') {
             this.gameState = 'paused';
-            this.showPauseModal();
+            document.getElementById('pause-modal').classList.remove('hidden');
+            
+            const continueBtn = document.querySelector('#pause-modal .btn-primary');
+            const newGameBtn = document.querySelector('#pause-modal .btn-secondary');
+            
+            continueBtn.onclick = () => this.togglePause();
+            newGameBtn.onclick = () => this.newGame();
         } else if (this.gameState === 'paused') {
             this.gameState = 'playing';
-            this.hidePauseModal();
+            document.getElementById('pause-modal').classList.add('hidden');
         }
-    }
-
-    checkGameEnd() {
-        if (this.score >= this.targetScore) {
-            this.gameState = 'won';
-            this.showVictoryModal();
-        } else if (this.moves <= 0) {
-            if (!this.hasPossibleMoves()) {
-                this.gameState = 'lost';
-                this.showGameOverModal();
-            } else {
-                this.gameState = 'lost';
-                this.showGameOverModal();
-            }
-        }
-    }
-
-    newGame() {
-        this.score = 0;
-        this.moves = this.maxMoves;
-        this.level = 1;
-        this.targetScore = 1000;
-        this.gameState = 'playing';
-        this.combo = 0;
-        this.hints = 3;
-        this.shuffles = 2;
-        
-        this.createBoard();
-        this.renderBoard();
-        this.updateUI();
-        this.hideAllModals();
-    }
-
-    nextLevel() {
-        this.level++;
-        this.targetScore = this.level * 1000;
-        this.moves = this.maxMoves;
-        this.gameState = 'playing';
-        this.hints = 3;
-        this.shuffles = 2;
-        
-        this.createBoard();
-        this.renderBoard();
-        this.updateUI();
-        this.hideAllModals();
-        this.showLevelStartMessage();
     }
 
     updateUI() {
@@ -629,216 +976,44 @@ class Match3Game {
         document.getElementById('level-value').textContent = this.level;
         document.getElementById('moves-value').textContent = this.moves;
         document.getElementById('target-score').textContent = this.targetScore;
+        document.getElementById('progress-text').textContent = `${this.score}/${this.targetScore}`;
         
         // Обновляем прогресс-бар
         const progress = Math.min((this.score / this.targetScore) * 100, 100);
-        document.querySelector('.progress-fill').style.width = `${progress}%`;
-        document.getElementById('progress-text').textContent = `${this.score}/${this.targetScore}`;
+        document.querySelector('.progress-fill').style.width = progress + '%';
         
-        // Обновляем состояние кнопок
-        document.getElementById('hint-btn').disabled = this.hints <= 0;
-        document.getElementById('shuffle-btn').disabled = this.shuffles <= 0;
-        
-        // Обновляем счетчики
+        // Обновляем кнопки
         document.getElementById('hint-btn').textContent = `Подсказка (${this.hints})`;
         document.getElementById('shuffle-btn').textContent = `Перемешать (${this.shuffles})`;
-    }
-
-    // Анимации и эффекты
-    shakeBoard() {
-        const board = document.querySelector('.game-board');
-        board.classList.add('shake');
-        setTimeout(() => {
-            board.classList.remove('shake');
-        }, 500);
-    }
-
-    animateCharacter(emotion) {
-        const character = document.querySelector('.character-img');
-        character.classList.add(emotion);
-        setTimeout(() => {
-            character.classList.remove(emotion);
-        }, 1000);
-    }
-
-    createParticles(element) {
-        const rect = element.getBoundingClientRect();
-        const colors = ['#ff6b9d', '#4ecdc4', '#95e1d3', '#a8edea', '#ffeaa7'];
         
-        for (let i = 0; i < 5; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            particle.style.position = 'fixed';
-            particle.style.left = rect.left + rect.width / 2 + 'px';
-            particle.style.top = rect.top + rect.height / 2 + 'px';
-            particle.style.width = '8px';
-            particle.style.height = '8px';
-            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            particle.style.zIndex = '1000';
-            
-            document.body.appendChild(particle);
-            
-            setTimeout(() => {
-                if (particle.parentNode) {
-                    particle.parentNode.removeChild(particle);
-                }
-            }, 1000);
-        }
+        // Отключаем кнопки если нет использований
+        document.getElementById('hint-btn').disabled = this.hints <= 0;
+        document.getElementById('shuffle-btn').disabled = this.shuffles <= 0;
     }
 
-    showScorePopup(score) {
-        const popup = document.createElement('div');
-        popup.className = 'score-popup';
-        popup.textContent = `+${score}`;
-        popup.style.position = 'fixed';
-        popup.style.top = '50%';
-        popup.style.left = '50%';
-        popup.style.transform = 'translate(-50%, -50%)';
-        popup.style.fontSize = '2em';
-        popup.style.fontWeight = 'bold';
-        popup.style.color = '#ff6b9d';
-        popup.style.zIndex = '1000';
-        popup.style.pointerEvents = 'none';
-        popup.style.animation = 'score-popup 1s ease-out forwards';
-        
-        document.body.appendChild(popup);
-        
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.parentNode.removeChild(popup);
-            }
-        }, 1000);
-    }
-
-    showComboPopup(combo) {
-        const popup = document.createElement('div');
-        popup.className = 'combo-popup';
-        popup.textContent = `КОМБО x${combo}!`;
-        popup.style.position = 'fixed';
-        popup.style.top = '40%';
-        popup.style.left = '50%';
-        popup.style.transform = 'translate(-50%, -50%)';
-        popup.style.fontSize = '1.5em';
-        popup.style.fontWeight = 'bold';
-        popup.style.color = '#ffeaa7';
-        popup.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-        popup.style.zIndex = '1000';
-        popup.style.pointerEvents = 'none';
-        
-        document.body.appendChild(popup);
-        
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.parentNode.removeChild(popup);
-            }
-        }, 1500);
-    }
-
-    // Модальные окна
     showWelcomeMessage() {
-        this.updateSpeechBubble("Привет! Помоги мне собрать кристаллы! Нужно набрать " + this.targetScore + " очков!");
-    }
-
-    showLevelStartMessage() {
-        this.updateSpeechBubble(`Уровень ${this.level}! Теперь нужно набрать ${this.targetScore} очков!`);
+        const messages = [
+            "Привет! Помоги мне собрать кристаллы!",
+            "Давай играть вместе, онэ-тян!",
+            "Нужно набрать очки! Ты поможешь?",
+            "Собери кристаллы и помоги мне!"
+        ];
+        
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        this.updateSpeechBubble(randomMessage);
     }
 
     updateSpeechBubble(message) {
         const bubble = document.querySelector('.speech-bubble p');
         if (bubble) {
-            bubble.innerHTML = message.replace(/\d+/g, '<span id="target-score">$&</span>');
+            bubble.innerHTML = message + ` Нужно набрать <span id="target-score">${this.targetScore}</span> очков!`;
         }
-    }
-
-    showVictoryModal() {
-        const modal = document.getElementById('victory-modal');
-        const character = modal.querySelector('.celebration-img');
-        
-        // Обновляем изображение персонажа
-        character.src = './assets/character_victory.png';
-        
-        modal.classList.remove('hidden');
-        this.animateCharacter('happy');
-        
-        // Добавляем обработчики для кнопок
-        modal.querySelector('.btn-primary').onclick = () => this.nextLevel();
-        modal.querySelector('.btn-secondary').onclick = () => this.newGame();
-    }
-
-    showGameOverModal() {
-        const modal = document.getElementById('game-over-modal');
-        modal.classList.remove('hidden');
-        
-        modal.querySelector('.btn-primary').onclick = () => this.newGame();
-    }
-
-    showPauseModal() {
-        const modal = document.getElementById('pause-modal');
-        modal.classList.remove('hidden');
-        
-        modal.querySelector('.btn-primary').onclick = () => this.togglePause();
-        modal.querySelector('.btn-secondary').onclick = () => this.newGame();
-    }
-
-    hideAllModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.classList.add('hidden');
-        });
-    }
-
-    hidePauseModal() {
-        document.getElementById('pause-modal').classList.add('hidden');
-    }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
-// Инициализация игры при загрузке страницы
+// Инициализация игры
 document.addEventListener('DOMContentLoaded', () => {
-    window.game = new Match3Game();
+    const preloader = new PreLoader();
+    preloader.loadAssets();
 });
-
-// Дополнительные CSS анимации через JavaScript
-const additionalCSS = `
-    @keyframes score-popup {
-        0% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        100% {
-            opacity: 0;
-            transform: translate(-50%, -150%) scale(1.5);
-        }
-    }
-    
-    .game-cell.hint {
-        animation: hint-pulse 0.5s ease-in-out infinite alternate;
-        box-shadow: 0 0 20px #ffeaa7 !important;
-    }
-    
-    @keyframes hint-pulse {
-        0% { transform: scale(1); }
-        100% { transform: scale(1.1); }
-    }
-    
-    .crystal-icon {
-        transition: all 0.3s ease;
-    }
-    
-    .game-cell:hover .crystal-icon {
-        transform: scale(1.1);
-    }
-    
-    .game-cell.selected .crystal-icon {
-        transform: scale(1.2);
-        filter: brightness(1.3);
-    }
-`;
-
-// Добавляем дополнительные стили
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalCSS;
-document.head.appendChild(styleSheet);
 

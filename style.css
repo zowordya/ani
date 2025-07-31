@@ -30,6 +30,7 @@ body {
     grid-template-columns: 300px 1fr;
     grid-template-rows: auto auto auto auto;
     gap: 20px;
+    position: relative; /* Добавлено для правильного позиционирования аудио-контролов */
 }
 
 /* Заголовок */
@@ -234,7 +235,7 @@ body {
     50% { transform: scale(1.3); opacity: 0.7; }
 }
 
-.crystal-icon {
+.gem {
     width: 90%;
     height: 90%;
     background-size: contain !important;
@@ -702,5 +703,422 @@ body {
 @keyframes possible-move-glow {
     0% { box-shadow: 0 0 15px rgba(255, 234, 167, 0.8); }
     100% { box-shadow: 0 0 25px rgba(255, 234, 167, 1); }
+}
+
+
+/* Tutorial Modal Styles */
+.tutorial-modal {
+    z-index: 2000;
+}
+
+.tutorial-content {
+    max-width: 500px;
+    text-align: center;
+    padding: 30px;
+}
+
+.tutorial-character img {
+    width: 150px;
+    height: auto;
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+
+.tutorial-text h2 {
+    color: #ff69b4;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.tutorial-step {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 182, 193, 0.2);
+    border-radius: 10px;
+    border: 2px solid #ffb6c1;
+}
+
+.tutorial-hand {
+    font-size: 24px;
+    margin-top: 10px;
+    animation: handPulse 1s infinite;
+}
+
+@keyframes handPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.tutorial-next {
+    margin-top: 20px;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+/* Enhanced Combo Effects */
+.combo-effect {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    pointer-events: none;
+    animation: comboExplosion 2s ease-out forwards;
+}
+
+.combo-text {
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff1493;
+    text-shadow: 
+        0 0 10px #ff69b4,
+        0 0 20px #ff69b4,
+        0 0 30px #ff69b4;
+    margin-bottom: 10px;
+    animation: comboGlow 0.5s ease-in-out infinite alternate;
+}
+
+.combo-multiplier {
+    font-size: 24px;
+    color: #ffd700;
+    font-weight: bold;
+    text-shadow: 0 0 10px #ffff00;
+}
+
+@keyframes comboExplosion {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0;
+    }
+    20% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+    80% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+}
+
+@keyframes comboGlow {
+    0% { text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff69b4, 0 0 30px #ff69b4; }
+    100% { text-shadow: 0 0 20px #ff1493, 0 0 30px #ff1493, 0 0 40px #ff1493; }
+}
+
+/* Hint Highlight Effects */
+.hint-highlight {
+    animation: hintPulse 1s ease-in-out infinite;
+    box-shadow: 0 0 20px #ffd700 !important;
+}
+
+@keyframes hintPulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 20px #ffd700;
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 30px #ffff00;
+    }
+}
+
+/* Animated Hand for Hints */
+.animated-hand {
+    font-size: 24px;
+    animation: handPulse 1s infinite;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+}
+
+/* Enhanced Matched Gems Animation */
+.matched {
+    animation: matchedExplosion 0.5s ease-out forwards;
+}
+
+@keyframes matchedExplosion {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+        box-shadow: 0 0 20px #fff;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+/* Improved Button Styles for Pause */
+#pause-btn {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important;
+    color: white !important;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    border: 2px solid #ff4757;
+}
+
+#pause-btn:hover {
+    background: linear-gradient(135deg, #ff5252, #d63031) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+}
+
+/* Enhanced Modal Button Spacing */
+.modal-content .btn {
+    margin: 8px;
+    min-width: 120px;
+}
+
+.modal-content .btn-primary {
+    background: linear-gradient(135deg, #ff69b4, #ff1493);
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 25px;
+    box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+    transition: all 0.3s ease;
+}
+
+.modal-content .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+}
+
+.modal-content .btn-secondary {
+    background: linear-gradient(135deg, #ddd, #bbb);
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 25px;
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.modal-content .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Character celebration animation */
+.character-celebration {
+    animation: celebrationBounce 2s ease-in-out infinite;
+}
+
+@keyframes celebrationBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.celebration-img {
+    width: 120px;
+    height: 150px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 0 auto 20px;
+    border-radius: 10px;
+}
+
+/* Responsive improvements for mobile */
+@media (max-width: 768px) {
+    .combo-text {
+        font-size: 36px;
+    }
+    
+    .combo-multiplier {
+        font-size: 20px;
+    }
+    
+    .tutorial-character img {
+        width: 120px;
+    }
+    
+    .tutorial-content {
+        padding: 20px;
+        max-width: 90vw;
+    }
+    
+    .animated-hand {
+        font-size: 20px;
+    }
+}
+
+/* Disabled button styles */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Preloader Styles */
+.preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease-out;
+}
+
+.preloader.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preloader-content {
+    text-align: center;
+    color: white;
+}
+
+.preloader-character {
+    margin-bottom: 30px;
+    animation: preloaderFloat 2s ease-in-out infinite;
+}
+
+.preloader-character img {
+    width: 150px;
+    height: 150px;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+}
+
+@keyframes preloaderFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.preloader-text h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    color: #fff;
+}
+
+.progress-bar-preloader {
+    width: 300px;
+    height: 20px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 auto 15px;
+    border: 2px solid rgba(255,255,255,0.5);
+}
+
+.progress-fill-preloader {
+    height: 100%;
+    background: linear-gradient(90deg, #ff69b4, #ff1493);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+}
+
+.preloader-percentage {
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Audio Controls - Исправленные стили */
+.audio-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.btn-audio {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #ff69b4;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+}
+
+.btn-audio:hover {
+    background: #ff69b4;
+    color: white;
+    transform: scale(1.1);
+}
+
+.btn-audio.muted {
+    background: #ccc;
+    border-color: #999;
+}
+
+.btn-audio.muted:hover {
+    background: #999;
+}
+
+/* Responsive preloader */
+@media (max-width: 768px) {
+    .preloader-character img {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .preloader-text h2 {
+        font-size: 24px;
+    }
+    
+    .progress-bar-preloader {
+        width: 250px;
+    }
+    
+    .audio-controls {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .btn-audio {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .audio-controls {
+        top: 5px;
+        right: 5px;
+    }
+    
+    .btn-audio {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+}
+
+/* Hide game container during loading */
+.loading .game-container {
+    display: none;
 }
 

@@ -7,7 +7,39 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-content">
+            <div class="preloader-character">
+                <img src="assets/preloader_character.png" alt="Загрузка...">
+            </div>
+            <div class="preloader-text">
+                <h2>Загружаем магию...</h2>
+                <div class="progress-bar-preloader">
+                    <div class="progress-fill-preloader"></div>
+                </div>
+                <div class="preloader-percentage">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements -->
+    <audio id="bg-music" loop>
+        <source src="assets/bg_music.wav" type="audio/wav">
+    </audio>
+    <audio id="match-sound">
+        <source src="assets/match_sound.wav" type="audio/wav">
+    </audio>
+    <audio id="combo-sound">
+        <source src="assets/combo_sound.wav" type="audio/wav">
+    </audio>
+
     <div class="game-container">
+        <!-- Audio Controls -->
+        <div class="audio-controls">
+            <button class="btn-audio" id="audio-toggle">🔊</button>
+        </div>
+
         <!-- Заголовок -->
         <div class="game-header">
             <h1 class="game-title">Помоги сестренке</h1>
